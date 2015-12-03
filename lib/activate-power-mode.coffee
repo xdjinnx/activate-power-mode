@@ -17,6 +17,9 @@ module.exports = ActivatePowerMode =
       type: 'integer'
       default: 1
       enum: [1, 2]
+    ragemode:
+      type: 'boolean'
+      default: true
 
   activate: (state) ->
     @subscriptions = new CompositeDisposable
@@ -34,6 +37,13 @@ module.exports = ActivatePowerMode =
 
   destroy: ->
     @activeItemSubscription?.dispose()
+
+  consumeStatusBar: (statusBar) ->
+    @setupMeter(statusBar)
+
+  deactivate: ->
+    @statusBarTile?.destroy()
+    @statusBarTile = null
 
   subscribeToActiveTextEditor: ->
     @throttledShake = throttle @shake.bind(this), 100, trailing: false
@@ -62,6 +72,33 @@ module.exports = ActivatePowerMode =
     @canvas.height = @editorElement.offsetHeight
     @editorElement.parentNode.appendChild @canvas
 
+  setupMeter: (statusBar) ->
+    @div = document.createElement "div"
+    @rageMeter = document.createElement "span"
+    @div.classList.add "meter"
+    @div.appendChild @rageMeter
+    @rage = 0
+    @enraged = false
+    @rageMeter.style.width = "#{@rage/10}%"
+    @statusBarTile = statusBar.addLeftTile(item: @div, priority: 100)
+    @decayRage()
+
+  decayRage: ->
+    requestAnimationFrame @decayRage.bind(this)
+    if @rage > 0
+      @rage -= 2
+      @rageMeter.style.width = "#{@rage/10}%"
+    else
+      @enraged = false
+
+  addRage: (removing) ->
+    if (removing || @enraged) && atom.config.get('activate-power-mode.ragemode')
+      @rage += 100
+    if @rage >= 1000
+      @rage = 1000
+      @enraged = true
+    @rageMeter.style.width = "#{@rage/10}%"
+
   calculateCursorOffset: ->
     editorRect = @editorElement.getBoundingClientRect()
     scrollViewRect = @editorElement.shadowRoot.querySelector(".scroll-view").getBoundingClientRect()
@@ -74,8 +111,10 @@ module.exports = ActivatePowerMode =
     if e.newText
       spawnParticles = e.newText isnt "\n"
       range = e.newRange.end
+      @addRage(false)
     else
       range = e.newRange.start
+      @addRage(true)
 
     if atom.config.get('activate-power-mode.animation')
       @throttledSpawnParticles(range) if spawnParticles
@@ -128,11 +167,11 @@ module.exports = ActivatePowerMode =
       alpha: 1
       color: color
 
-    if atom.config.get('activate-power-mode.effect') == 1
+    if atom.config.get('activate-power-mode.effect') == 1 && !@enraged
       particle.size = @random(2, 4)
       particle.vx = -1 + Math.random() * 2
       particle.vy = -3.5 + Math.random() * 2
-    else if atom.config.get('activate-power-mode.effect') == 2
+    else if atom.config.get('activate-power-mode.effect') == 2 || @enraged
       particle.size = @random(2, 8)
       particle.drag = 0.92
       particle.vx = @random(-3, 3)
@@ -149,9 +188,9 @@ module.exports = ActivatePowerMode =
     for particle in @particles
       continue if particle.alpha <= 0.1 or particle.size < 0.5
 
-      if atom.config.get('activate-power-mode.effect') == 1
+      if atom.config.get('activate-power-mode.effect') == 1 && !@enraged
         @effect1(particle)
-      else if atom.config.get('activate-power-mode.effect') == 2
+      else if atom.config.get('activate-power-mode.effect') == 2 || @enraged
         @effect2(particle)
 
   effect1: (particle) ->
