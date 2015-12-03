@@ -12,7 +12,7 @@ module.exports = ActivatePowerMode =
       default: true
     animation:
       type: 'boolean'
-      default: true
+      default: false
     effect:
       type: 'integer'
       default: 1
@@ -28,6 +28,9 @@ module.exports = ActivatePowerMode =
       @subscribeToActiveTextEditor()
 
     @subscribeToActiveTextEditor()
+
+    if atom.config.get('activate-power-mode.animation')
+      atom.config.set('activate-power-mode.animation', false)
 
   destroy: ->
     @activeItemSubscription?.dispose()
@@ -140,7 +143,7 @@ module.exports = ActivatePowerMode =
     particle;
 
   drawParticles: ->
-    requestAnimationFrame @drawParticles.bind(this)
+    @subscribeToNextAnimationFrame()
     @context.clearRect 0, 0, @canvas.width, @canvas.height
 
     for particle in @particles
@@ -180,8 +183,13 @@ module.exports = ActivatePowerMode =
     @context.arc(Math.round(particle.x - 1), Math.round(particle.y - 1), particle.size, 0, 2 * Math.PI)
     @context.fill()
 
+  subscribeToNextAnimationFrame: ->
+    if atom.config.get('activate-power-mode.animation')
+      requestAnimationFrame @drawParticles.bind(this)
+
   toggle: ->
     console.log 'ActivatePowerMode was toggled!'
+    atom.config.set('activate-power-mode.animation', !atom.config.get('activate-power-mode.animation'))
     @particlePointer = 0
     @particles = []
-    requestAnimationFrame @drawParticles.bind(this)
+    @subscribeToNextAnimationFrame()
