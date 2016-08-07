@@ -80,3 +80,12 @@ module.exports =
             type: "integer"
             default: 4
             minimum: 0
+
+  rage:
+    type: "object"
+    properties:
+      enabled:
+        title: "Rage - Enabled"
+        description: "Turn raging on/off."
+        type: "boolean"
+        default: true
