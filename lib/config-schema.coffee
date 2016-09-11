@@ -89,3 +89,9 @@ module.exports =
         description: "Turn raging on/off."
         type: "boolean"
         default: true
+
+      visible:
+        title: "Show Rage meter"
+        description: "Turn showing rage meter on/off."
+        type: "boolean"
+        default: true
